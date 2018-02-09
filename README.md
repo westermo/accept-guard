@@ -9,7 +9,7 @@ ACL environment variable syntax:
 ```
 <rule>[;<rule>]
 where rule obeys:
-<iface>:<port>[,<port>]...
+<interface>:<port>[,<port>]...
 ```
 If interface is defined as 'any', access will be allowed on all interfaces on the
 listed ports. 
