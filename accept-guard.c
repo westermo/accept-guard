@@ -117,11 +117,16 @@ static void parse_acl(void)
 }
 
 /* Figure out in-bound interface and port from socket */
-static int identify_inbound(int sd, char *ifname, size_t len, int *port)
+static int identify_inbound(int sd, int ifindex, char *ifname, size_t len, int *port)
 {
 	struct ifaddrs *ifaddr, *ifa;
 	struct sockaddr_in sin;
 	socklen_t slen = sizeof(sin);
+
+	if (ifindex) {
+		if_indextoname(ifindex, ifname);
+		return 0;
+	}
 
 	if (-1 == getsockname(sd, (struct sockaddr *)&sin, &slen))
 		return -1;
@@ -164,14 +169,14 @@ static int port_allowed(struct acl *entry, int port)
 	return 0;
 }
 
-static int iface_allowed(int sd)
+static int iface_allowed(int sd, int ifindex)
 {
 	char ifname[IF_NAMESIZE] = "UNKNOWN";
 	int port = 0;
 	int i;
 
 	/* If incoming interface cannot be identified, deny access. */
-	if (identify_inbound(sd, ifname, sizeof(ifname), &port))
+	if (identify_inbound(sd, ifindex, ifname, sizeof(ifname), &port))
 		return 0;
 
 	for (i = 0; i < MAX_IFACES; i++) {
@@ -198,7 +203,7 @@ int accept(int socket, struct sockaddr *addr, socklen_t *length_ptr)
 	org_accept = dlsym(RTLD_NEXT, "accept");
 	result = org_accept(socket, addr, length_ptr);
 	if (result > 0) {
-		if (!iface_allowed(result)) {
+		if (!iface_allowed(result, 0)) {
 			shutdown(result, SHUT_RDWR);
 			close(result);
 
@@ -209,6 +214,63 @@ int accept(int socket, struct sockaddr *addr, socklen_t *length_ptr)
 	}
 
 	return result;
+}
+
+/* Peek into socket to figure out where an inbound packet comes from */
+static int peek_ifindex(int sd)
+{
+	static char cmbuf[0x100];
+	struct msghdr msgh;
+	struct cmsghdr *cmsg;
+	struct sockaddr_in sin;
+	int on = 1;
+
+	setsockopt(sd, SOL_IP, IP_PKTINFO, &on, sizeof(on));
+
+	memset(&msgh, 0, sizeof(msgh));
+	msgh.msg_name = &sin;
+	msgh.msg_namelen = sizeof(sin);
+	msgh.msg_control = cmbuf;
+	msgh.msg_controllen = sizeof(cmbuf);
+
+	if (recvmsg(sd, &msgh, MSG_PEEK) < 0)
+		return 0;
+
+	for (cmsg = CMSG_FIRSTHDR(&msgh); cmsg; cmsg = CMSG_NXTHDR(&msgh, cmsg)) {
+		struct in_pktinfo *ipi = (struct in_pktinfo *)CMSG_DATA(cmsg);
+
+		if (cmsg->cmsg_level != SOL_IP || cmsg->cmsg_type != IP_PKTINFO)
+			continue;
+
+		return ipi->ipi_ifindex;
+	}
+
+	return 0;
+}
+
+ssize_t recvfrom(int sd, void *buf, size_t len, int flags, struct sockaddr *addr, socklen_t *addrlen)
+{
+	ssize_t (*org_recvfrom)(int, void *, size_t, int, struct sockaddr *, socklen_t *);
+	int ifindex, rc;
+
+	/* Parse configuration from environment variable. */
+	parse_acl();
+
+	ifindex = peek_ifindex(sd);
+
+	org_recvfrom = dlsym(RTLD_NEXT, "recvfrom");
+	rc = org_recvfrom(sd, buf, len, flags, addr, addrlen);
+	if (rc > 0) {
+		if (!iface_allowed(sd, ifindex)) {
+			shutdown(rc, SHUT_RDWR);
+			close(rc);
+			/* Set as not valid socket, since it's not valid for access. */
+			errno = EBADF;
+			return -1;
+		}
+	}
+
+	return rc;
 }
 
 /**
