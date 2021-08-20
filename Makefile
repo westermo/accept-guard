@@ -21,6 +21,9 @@ all: $(LIBNAME)
 $(LIBNAME): $(OBJS)
 	$(CC) $(CFLAGS) -shared $(OBJS) -o $@ $(LIBS)
 
+check: all
+	$(MAKE) -C test $@
+
 install: $(LIBNAME)
 	$(INSTALL) -d $(DESTDIR)$(libdir)
 	$(INSTALL) -d $(DESTDIR)$(docdir)
