@@ -51,6 +51,23 @@ struct acl {
  * ports that are allowed access. */
 static struct acl acl[MAX_IFACES];
 
+static size_t strlencpy(char *dst, const char *src, size_t len)
+{
+	const char *p = src;
+	size_t num = len;
+
+	while (num > 0) {
+		num--;
+		if ((*dst++ = *src++) == 0)
+			break;
+	}
+
+	if (num == 0 && len > 0)
+		*dst = 0;
+
+	return src - p - 1;
+}
+
 /*
  * Parse environment variable for a list of allowed interfaces and ports
  * Result is stored in global static variable @acl.
@@ -81,7 +98,7 @@ static void parse_acl(void)
 		if (!iface)
 			goto next;
 
-		strncpy(acl[i].iface, iface, IF_NAMESIZE);
+		strlencpy(acl[i].iface, iface, sizeof(acl[i].iface));
 		ports = strtok_r(field_pos, ": ", &field_pos);
 		if (ports) {
 			port_pos = ports;
@@ -128,7 +145,7 @@ static int identify_inbound(int sd, char *ifname, size_t len, int *port)
 
 		iin = (struct sockaddr_in *)ifa->ifa_addr;
 		if (!memcmp(&sin.sin_addr, &iin->sin_addr, ina_len)) {
-			strncpy(ifname, ifa->ifa_name, len);
+			strlencpy(ifname, ifa->ifa_name, len);
 			break;
 		}
 	}
