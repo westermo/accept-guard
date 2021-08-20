@@ -42,14 +42,14 @@
 #define MAX_IFACES 64 * 4
 #define MAX_PORTS 2
 
-typedef struct {
+struct acl {
 	char iface[IF_NAMESIZE];
 	int ports[MAX_PORTS];
-} access_entry;
+};
 
 /* The access control list containing interfaces and
  * ports that are allowed access. */
-static access_entry acl[MAX_IFACES];
+static struct acl acl[MAX_IFACES];
 
 /*
  * Parse environment variable for a list of allowed interfaces and ports
@@ -135,7 +135,7 @@ static int identify_inbound(int sd, char *ifname, int *port)
 	return 0;
 }
 
-static int port_allowed(access_entry * entry, int port)
+static int port_allowed(struct acl *entry, int port)
 {
 	int i;
 
