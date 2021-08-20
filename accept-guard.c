@@ -113,8 +113,6 @@ static int identify_inbound(int sd, char *ifname, int *port)
 	if (-1 == getsockname(sd, (struct sockaddr *)&sin, &len))
 		return -1;
 
-	*port = ntohs(sin.sin_port);
-
 	if (-1 == getifaddrs(&ifaddr))
 		return -1;
 
@@ -135,6 +133,9 @@ static int identify_inbound(int sd, char *ifname, int *port)
 		}
 	}
 	freeifaddrs(ifaddr);
+
+	*port = ntohs(sin.sin_port);
+
 	return 0;
 }
 
