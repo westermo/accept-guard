@@ -69,6 +69,8 @@ static void parse_acl(void)
 		return;
 
 	env = getenv(ACL_ENV);
+	if (!env)
+		return;
 
 	record_pos = env;
 	record = strtok_r(record_pos, "; ", &record_pos);
