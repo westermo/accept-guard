@@ -37,14 +37,14 @@
 #include <net/if.h>
 #include <errno.h>
 
-#define ACL_ENV "ACL"
-#define IFACE_ANY "any"
-#define MAX_IFACES 64 * 4
-#define MAX_PORTS 2
+#define ACL_ENV     "ACL"
+#define IFACE_ANY   "any"
+#define MAX_IFACES  (64 * 4)
+#define MAX_PORTS   2
 
 struct acl {
 	char iface[IF_NAMESIZE];
-	int ports[MAX_PORTS];
+	int  ports[MAX_PORTS];
 };
 
 /* The access control list containing interfaces and
