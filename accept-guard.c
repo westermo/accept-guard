@@ -76,30 +76,31 @@ static void parse_acl(void)
 	record = strtok_r(record_pos, "; ", &record_pos);
 	while (record && i < MAX_IFACES) {
 		field_pos = record;
-		iface = strtok_r(field_pos, ": ", &field_pos);
-		if (iface) {
-			strncpy(acl[i].iface, iface, IF_NAMESIZE);
-			ports = strtok_r(field_pos, ": ", &field_pos);
 
-			if (ports) {
-				port_pos = ports;
+		iface = strtok_r(field_pos, ": ", &field_pos);
+		if (!iface)
+			goto next;
+
+		strncpy(acl[i].iface, iface, IF_NAMESIZE);
+		ports = strtok_r(field_pos, ": ", &field_pos);
+		if (ports) {
+			port_pos = ports;
+			port = strtok_r(port_pos, ", ", &port_pos);
+			j = 0;
+			while (port && j < MAX_PORTS) {
+				/*
+				 * If strtol fails, 0 will be set.
+				 * Port 0 is never used, so no problem
+				 */
+				acl[i].ports[j] = strtol(port, NULL, 10);
 				port = strtok_r(port_pos, ", ", &port_pos);
-				j = 0;
-				while (port && j < MAX_PORTS) {
-					/*
-					 * If strtol fails, 0 will be set.
-					 * Port 0 is never used, so no problem
-					 */
-					acl[i].ports[j] = strtol(port, NULL, 10);
-					port = strtok_r(port_pos, ", ", &port_pos);
-					j++;
-				}
+				j++;
 			}
-			i++;
 		}
+		i++;
+	next:
 		record = strtok_r(record_pos, "; ", &record_pos);
 	}
-	return;
 }
 
 /* Figure out in-bound interface and port from socket */
