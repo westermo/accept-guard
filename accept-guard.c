@@ -1,7 +1,7 @@
 /*
  * The accept guard wrapper will allow access based on the environment variable
  * @ACL_ENV, where allowed interfaces and ports are listed.
-
+ *
  * MIT License
  *
  * Copyright (c) 2018 Thomas Eliasson <lajson@outlook.com>
@@ -12,10 +12,10 @@
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
-
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
-
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -23,7 +23,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-*/
+ */
 
 #define _GNU_SOURCE
 #include <dlfcn.h>
@@ -58,15 +58,17 @@ static access_entry acl[MAX_IFACES];
  */
 static void parse_acl(void)
 {
+	char *record_pos, *field_pos, *port_pos;
+	char *record, *iface, *ports, *port;
+	char *env;
 	int i = 0;
 	int j;
-	char *record, *iface, *ports, *port;
-	char *record_pos, *field_pos, *port_pos;
 
 	/* Only performed if list is empty. */
 	if (acl[0].iface[0] != '\0')
 		return;
-	char *env = getenv(ACL_ENV);
+
+	env = getenv(ACL_ENV);
 
 	record_pos = env;
 	record = strtok_r(record_pos, "; ", &record_pos);
@@ -135,21 +137,21 @@ static int identify_inbound(int sd, char *ifname, int *port)
 
 static int port_allowed(access_entry * entry, int port)
 {
-	int j;
+	int i;
 
-	for (j = 0; j < MAX_PORTS; j++) {
-		if (entry->ports[j] == port) {
+	for (i = 0; i < MAX_PORTS; i++) {
+		if (entry->ports[i] == port)
 			return 1;
-		}
 	}
+
 	return 0;
 }
 
 static int iface_allowed(int sd)
 {
 	char ifname[IF_NAMESIZE] = "UNKNOWN";
-	int i;
 	int port = 0;
+	int i;
 
 	/* If incoming interface cannot be identified, deny access. */
 	if (identify_inbound(sd, ifname, &port))
@@ -159,16 +161,18 @@ static int iface_allowed(int sd)
 		/* If reached last item => deny access */
 		if (acl[i].iface[0] == '\0')
 			return 0;
-		if (!strncmp(ifname, acl[i].iface, IF_NAMESIZE) || !strncmp(IFACE_ANY, acl[i].iface, IF_NAMESIZE)) {
+
+		if (!strncmp(ifname, acl[i].iface, IF_NAMESIZE) ||
+		    !strncmp(IFACE_ANY, acl[i].iface, IF_NAMESIZE))
 			return port_allowed(&acl[i], port);
-		}
 	}
+
 	return 0;
 }
 
-int accept(int socket, struct sockaddr *addr, socklen_t * length_ptr)
+int accept(int socket, struct sockaddr *addr, socklen_t *length_ptr)
 {
-	int (*org_accept) (int socket, struct sockaddr * addr, socklen_t * length_ptr);
+	int (*org_accept)(int socket, struct sockaddr *addr, socklen_t *length_ptr);
 	int result;
 
 	/* Parse configuration from environment variable. */
@@ -180,10 +184,19 @@ int accept(int socket, struct sockaddr *addr, socklen_t * length_ptr)
 		if (!iface_allowed(result)) {
 			shutdown(result, SHUT_RDWR);
 			close(result);
+
 			/* Set as not valid socket, since it's not valid for access. */
 			errno = EBADF;
 			return -1;
 		}
 	}
+
 	return result;
 }
+
+/**
+ * Local Variables:
+ *  indent-tabs-mode: t
+ *  c-file-style: "linux"
+ * End:
+ */
