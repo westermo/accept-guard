@@ -104,20 +104,20 @@ static void parse_acl(void)
 }
 
 /* Figure out in-bound interface and port from socket */
-static int identify_inbound(int sd, char *ifname, int *port)
+static int identify_inbound(int sd, char *ifname, size_t len, int *port)
 {
 	struct ifaddrs *ifaddr, *ifa;
 	struct sockaddr_in sin;
-	socklen_t len = sizeof(sin);
+	socklen_t slen = sizeof(sin);
 
-	if (-1 == getsockname(sd, (struct sockaddr *)&sin, &len))
+	if (-1 == getsockname(sd, (struct sockaddr *)&sin, &slen))
 		return -1;
 
 	if (-1 == getifaddrs(&ifaddr))
 		return -1;
 
 	for (ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
-		size_t len = sizeof(struct in_addr);
+		size_t ina_len = sizeof(struct in_addr);
 		struct sockaddr_in *iin;
 
 		if (!ifa->ifa_addr)
@@ -127,8 +127,8 @@ static int identify_inbound(int sd, char *ifname, int *port)
 			continue;
 
 		iin = (struct sockaddr_in *)ifa->ifa_addr;
-		if (!memcmp(&sin.sin_addr, &iin->sin_addr, len)) {
-			strncpy(ifname, ifa->ifa_name, IF_NAMESIZE);
+		if (!memcmp(&sin.sin_addr, &iin->sin_addr, ina_len)) {
+			strncpy(ifname, ifa->ifa_name, len);
 			break;
 		}
 	}
@@ -158,7 +158,7 @@ static int iface_allowed(int sd)
 	int i;
 
 	/* If incoming interface cannot be identified, deny access. */
-	if (identify_inbound(sd, ifname, &port))
+	if (identify_inbound(sd, ifname, sizeof(ifname), &port))
 		return 0;
 
 	for (i = 0; i < MAX_IFACES; i++) {
