@@ -1,5 +1,4 @@
-include build.mk
-VERSION   = 1.0
+VERSION   = 1.1-beta1
 NAME      = accept-guard
 PKG       = $(NAME)-$(VERSION)
 ARCHIVE   = $(PKG).tar.gz
@@ -10,6 +9,7 @@ docdir    = $(prefix)/share/doc/$(NAME)
 RM        = rm -f
 INSTALL   = install
 
+CFLAGS   ?= -g -O2 -W -Wall -Wextra
 CFLAGS   += -fPIC
 OBJS      = accept-guard.o
 LIBS      = -ldl
@@ -19,32 +19,28 @@ DOCFILES  = README.md LICENSE
 all: $(LIBNAME)
 
 $(LIBNAME): $(OBJS)
-	@printf "  LIB     $@\n"
-	@$(CC) $(CFLAGS) -shared $(OBJS) -o $@ $(LIBS)
+	$(CC) $(CFLAGS) -shared $(OBJS) -o $@ $(LIBS)
 
 install: $(LIBNAME)
-	@printf "  INSTALL $(LIBNAME) to $(DESTDIR)\n"
-	@$(INSTALL) -d $(DESTDIR)$(libdir)
-	@$(INSTALL) -d $(DESTDIR)$(docdir)
-	@$(INSTALL) -m 0644 $(LIBNAME) $(DESTDIR)$(libdir)/$(LIBNAME)
-	@for file in $(DOCFILES); do					\
+	$(INSTALL) -d $(DESTDIR)$(libdir)
+	$(INSTALL) -d $(DESTDIR)$(docdir)
+	$(INSTALL) -m 0644 $(LIBNAME) $(DESTDIR)$(libdir)/$(LIBNAME)
+	for file in $(DOCFILES); do					\
 		$(INSTALL) -m 0644 $$file $(DESTDIR)$(docdir)/$$file;	\
 	done
 
 uninstall:
-	@printf "  UNINST  $(LIBNAME) from $(DESTDIR)\n"
-	-@$(RM) $(DESTDIR)$(libdir)/$(LIBNAME)
-	-@$(RM) -r $(DESTDIR)$(docdir)
+	-$(RM) $(DESTDIR)$(libdir)/$(LIBNAME)
+	-$(RM) -r $(DESTDIR)$(docdir)
 
 clean:
-	@$(RM) $(LIBNAME) *.o
+	-$(RM) $(LIBNAME) *.o
 
 dist:
-	@git archive --format=tar.gz --prefix=$(PKG)/ -o ../$(ARCHIVE) v$(VERSION)
+	git archive --format=tar.gz --prefix=$(PKG)/ -o ../$(ARCHIVE) v$(VERSION)
 
 distclean: clean
-	@$(RM) *~
+	-$(RM) *~
 
 release: dist
-	@printf "  RELEASE ../$(ARCHIVE)\n"
-	@(cd ..; md5sum $(ARCHIVE) > $(ARCHIVE).md5)
+	(cd ..; md5sum $(ARCHIVE) > $(ARCHIVE).md5)
