@@ -1,8 +1,4 @@
-/*
- * The accept guard wrapper will allow access based on the environment variable
- * @ACL_ENV, where allowed interfaces and ports are listed.
- *
- * MIT License
+/* accept-guard.c - verifies accept() per interface:port for tcp connections
  *
  * Copyright (c) 2018 Thomas Eliasson <lajson@outlook.com>
  *
@@ -37,7 +33,7 @@
 #include <net/if.h>
 #include <errno.h>
 
-#define ACL_ENV     "ACL"
+#define ACL_ENV     "ACCEPT_GUARD_ACL"
 #define IFACE_ANY   "any"
 #define MAX_IFACES  (64 * 4)
 #define MAX_PORTS   2
