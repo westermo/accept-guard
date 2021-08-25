@@ -21,7 +21,7 @@ ip -br l
 ip -br a
 
 export LD_PRELOAD=../accept-guard.so
-export ACL="lo:8080;a2:8080"
+export ACCEPT_GUARD_ACL="lo:8080;a2:8080"
 ./server &
 PID=$!
 
