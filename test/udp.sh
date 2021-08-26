@@ -22,22 +22,22 @@ ip -br a
 
 export LD_PRELOAD=../accept-guard.so
 export ACCEPT_GUARD_ACL="lo:8080;a2:8080"
-./server -t -p 8080 &
+./server -u -p 8080 &
 PID=$!
 unset LD_PRELOAD
 sleep 1
 
-if ! ./client -t -p 8080 127.0.0.1; then
+if ! ./client -u -p 8080 127.0.0.1; then
     echo "Cannot connect via loopback"
     exit 1
 fi
 
-if ./client -t -p 8080 10.0.0.1; then
+if ./client -u -p 8080 10.0.0.1; then
     echo "Should not be able to connect via a1"
     exit 1
 fi
 
-if ! ./client -t -p 8080 20.0.0.1; then
+if ! ./client -u -p 8080 20.0.0.1; then
     echo "Cannot connect via a1"
     exit 1
 fi
