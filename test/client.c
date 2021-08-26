@@ -11,108 +11,139 @@
 #include <unistd.h>
 
 #define MAX 80
-#define PORT 8080
+#define PORT "8080"
 
-void tcp(int sd, char *addr, int port)
+socklen_t sock_creat(int family, int type, char *addr, char *port, struct sockaddr *sa, socklen_t *salen)
 {
-	struct sockaddr_in sin = { 0 };
-	char buf[MAX];
-	int n;
+	struct addrinfo hints = { 0 };
+	struct addrinfo *result, *ai;
+	int rc, sd = -1;
 
-	sin.sin_family = AF_INET;
-	sin.sin_addr.s_addr = inet_addr(addr);
-	sin.sin_port = htons(port);
+	hints.ai_family = family;
+	hints.ai_socktype = type;
+	hints.ai_flags = AI_NUMERICHOST;
 
-	if (connect(sd, (struct sockaddr*)&sin, sizeof(sin)) == -1)
-		err(1, "Failed connecting to server");
+	if ((rc = getaddrinfo(addr, port, &hints, &result)))
+		errx(1, "Failed looking up %s:%s: %s", addr, port, gai_strerror(rc));
 
-	snprintf(buf, sizeof(buf), "HELO %s, THIS IS CLIENT", addr);
-	n = write(sd, buf, sizeof(buf));
-	if (n == -1)
-		err(1, "Failed communicating with server at %s:%d", addr, port);
+	for (ai = result; ai; ai = ai->ai_next) {
+		if (ai->ai_socktype != type)
+			continue;
 
-	n = read(sd, buf, sizeof(buf));
-	if (n <= 0) {
-		usleep(10000);
-		err(1, "Failed reading response from server at %s:%d", addr, port);
+		sd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+		if (sd == -1)
+			continue;
+
+		if (ai->ai_socktype == SOCK_STREAM) {
+			if (connect(sd, ai->ai_addr, ai->ai_addrlen) == -1)
+				err(1, "Failed connecting to server");
+		}
+
+		if (sa)
+			*sa = *ai->ai_addr;
+		if (salen)
+			*salen = ai->ai_addrlen;
+		break;
 	}
+	freeaddrinfo(result);
 
-	buf[n] = 0;
-	warnx("server replied: %s", buf);
+	if (sd == -1)
+		err(1, "Failed creating socket");
+
+	return sd;
 }
 
-void udp(int sd, char *addr, int port)
+void tcp(int family, char *addr, char *port)
 {
-	struct sockaddr_in sin = { 0 };
-	struct timeval tv = { 1, 0 };
-	socklen_t sinlen;
 	char buf[MAX];
-	int len;
+	int sd, len;
 
-	if (setsockopt(sd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
-		err(1, "Failed setting SO_RCVTIMEO");
+	snprintf(buf, sizeof(buf), "HELO %s:%s, THIS IS CLIENT", addr, port);
 
-	sin.sin_family = AF_INET;
-	sin.sin_addr.s_addr = inet_addr(addr);
-	sin.sin_port = htons(port);
-
-	snprintf(buf, sizeof(buf), "HELO %s, THIS IS CLIENT", addr);
-	warnx("Sending on %d: '%s'", sd, buf);
-	len = sendto(sd, buf, strlen(buf), 0,  (struct sockaddr *)&sin, sizeof(sin));
+	sd = sock_creat(family, SOCK_STREAM, addr, port, NULL, NULL);
+	len = write(sd, buf, sizeof(buf));
 	if (len == -1)
-		err(1, "Failed communicating with %s:%d", addr, port);
+		err(1, "Failed communicating with server at %s:%s", addr, port);
 
-	sinlen = sizeof(sin);
-	warnx("Receiving on %d", sd);
-	len = recvfrom(sd, buf, sizeof(buf), 0, (struct sockaddr *)&sin, &sinlen);
-	if (len == -1)
-		err(1, "Failed reading response from %s:%d", addr, port);
+	len = read(sd, buf, sizeof(buf));
+	if (len <= 0) {
+		usleep(10000);
+		err(1, "Failed reading response from server at %s:%s", addr, port);
+	}
 
 	buf[len] = 0;
 	warnx("server replied: %s", buf);
+	close(sd);
+}
+
+void udp(int family, char *addr, char *port)
+{
+	struct timeval tv = { 1, 0 };
+	struct sockaddr sa;
+	socklen_t salen;
+	char buf[MAX];
+	int sd, len;
+
+	sd = sock_creat(family, SOCK_DGRAM, addr, port, &sa, &salen);
+	if (setsockopt(sd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
+		err(1, "Failed setting SO_RCVTIMEO");
+
+	snprintf(buf, sizeof(buf), "HELO %s, THIS IS CLIENT", addr);
+	len = sendto(sd, buf, strlen(buf), 0, &sa, salen);
+	if (len == -1)
+		err(1, "Failed communicating with %s:%s", addr, port);
+
+	warnx("Receiving on %d", sd);
+	len = recvfrom(sd, buf, sizeof(buf), 0, &sa, &salen);
+	if (len == -1)
+		err(1, "Failed reading response from %s:%s", addr, port);
+
+	buf[len] = 0;
+	warnx("server replied: %s", buf);
+	close(sd);
 }
 
 int main(int argc, char *argv[])
 {
 	char *addr = "127.0.0.1";
-	int port = PORT;
+	int family = AF_INET;
+	char *port = PORT;
 	int type = 1;
-	int sd, c;
+	int c;
   
-	while ((c = getopt(argc, argv, "p:tu")) != EOF) {
+	while ((c = getopt(argc, argv, "6p:tu")) != EOF) {
 		switch (c) {
+		case '6':
+			family = AF_INET6;
+			break;
+
 		case 'p':
-			port = atoi(optarg);
+			port = optarg;
 			break;
 
 		case 't':
-			sd = socket(AF_INET, SOCK_STREAM, 0);
 			type = 1;
 			break;
 
 		case 'u':
-			sd = socket(AF_INET, SOCK_DGRAM, 0);
 			type = 0;
 			break;
 
 		default:
-			errx(1, "Usage: %s [-tu] [-p PORT]", argv[0]);
+			errx(1, "Usage: %s [-6tu] [-p PORT]", argv[0]);
 		}
 	}
 
 	if (optind < argc)
 		addr = argv[optind];
 
-	if (sd == -1)
-		err(1, "Failed creating socket");
-
-	warnx("Connecting to server %s:%d ...", addr, port);
+	warnx("Connecting to server %s:%s ...", addr, port);
 	if (type)
-		tcp(sd, addr, port);
+		tcp(family, addr, port);
 	else
-		udp(sd, addr, port);
+		udp(family, addr, port);
 
-	return close(sd);
+	return 0;
 }
 
 /**

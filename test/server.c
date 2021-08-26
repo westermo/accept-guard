@@ -11,33 +11,57 @@
 #include <unistd.h>
 
 #define MAX 80
-#define PORT 8080
+#define PORT "8080"
 
 
-int sock_creat(int type)
+int sock_creat(int family, int type, char *port)
 {
-	int val = 1;
-	int sd;
+	struct addrinfo hints = { 0 };
+	struct addrinfo *result, *ai;
+	int rc, sd = -1;
 
-	sd = socket(AF_INET, type, 0);
+	hints.ai_family = family;
+	hints.ai_socktype = type;
+	hints.ai_flags = AI_PASSIVE | AI_NUMERICHOST;
+
+	if ((rc = getaddrinfo(NULL, port, &hints, &result)))
+		errx(1, "Failed looking up *:%s: %s", port, gai_strerror(rc));
+
+	for (ai = result; ai; ai = ai->ai_next) {
+		int val = 1;
+
+		if (ai->ai_socktype != type)
+			continue;
+
+		sd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+		if (sd == -1)
+			continue;
+
+		if (setsockopt(sd, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val)))
+			err(1, "Failed enabling SO_REUSEPORT");
+
+		if (setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val)))
+			err(1, "Failed enabling SO_REUSEADDR");
+
+		warnx("Starting up, binding to *:%s", port);
+		if ((bind(sd, ai->ai_addr, ai->ai_addrlen)) == -1)
+			err(1, "Failed binding socket to port *:%s", port);
+	}
+	freeaddrinfo(result);
+
 	if (sd == -1)
-		return -1;
-
-	if (setsockopt(sd, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val)))
-		err(1, "Failed enabling SO_REUSEPORT");
-
-	if (setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val)))
-		err(1, "Failed enabling SO_REUSEADDR");
+		err(1, "Failed creating socket");
 
 	return sd;
 }
 
-void tcp(int sd)
+void tcp(int family, char *port)
 {
-	struct sockaddr_in sin;
-	socklen_t len;
-	int client;
+	struct sockaddr sa;
+	socklen_t salen;
+	int client, sd;
 
+	sd = sock_creat(family, SOCK_STREAM, port);
 	if ((listen(sd, 5)) == -1)
 		err(1, "Failed setting listening socket");
 
@@ -47,8 +71,8 @@ void tcp(int sd)
 
 		warnx("waiting for client connection ...");
 
-		len = sizeof(sin);
-		client = accept(sd, (struct sockaddr*)&sin, &len);
+		salen = sizeof(sa);
+		client = accept(sd, &sa, &salen);
 		if (client < 0) {
 			warn("Failed accepting client connection");
 			continue;
@@ -72,16 +96,19 @@ void tcp(int sd)
 	}
 }
 
-void udp(int sd)
+void udp(int family, char *port)
 {
-	struct sockaddr_in sin;
-	socklen_t sinlen;
+	struct sockaddr sa;
+	socklen_t salen;
 	char buf[MAX];
 	ssize_t len;
+	int sd;
+
+	sd = sock_creat(family, SOCK_DGRAM, port);
 
 	while (1) {
-		sinlen = sizeof(sin);
-		len = recvfrom(sd, buf, sizeof(buf), 0, (struct sockaddr *)&sin, &sinlen);
+		salen = sizeof(sa);
+		len = recvfrom(sd, buf, sizeof(buf), 0, &sa, &salen);
 		if (len == -1) {
 			warn("Failed reading client request");
 			continue;
@@ -91,7 +118,7 @@ void udp(int sd)
 		warnx("client query: %s", buf);
 
 		snprintf(buf, sizeof(buf), "Welcome to the UDP Server!");
-		len = sendto(sd, buf, strlen(buf), 0,  (struct sockaddr *)&sin, sizeof(sin));
+		len = sendto(sd, buf, strlen(buf), 0, &sa, sizeof(sa));
 		if (len == -1)
 			warn("Failed sending reply to client");
 	}
@@ -99,23 +126,25 @@ void udp(int sd)
 
 int main(int argc, char *argv[])
 {
-	struct sockaddr_in sin;
-	int port = PORT;
-	int type, sd, c;
+	int family = AF_INET;
+	char *port = PORT;
+	int type, c;
 
-	while ((c = getopt(argc, argv, "p:tu")) != EOF) {
+	while ((c = getopt(argc, argv, "6p:tu")) != EOF) {
 		switch (c) {
+		case '6':
+			family = AF_INET6;
+			break;
+
 		case 'p':
-			port = atoi(optarg);
+			port = optarg;
 			break;
 
 		case 't':
-			sd = sock_creat(SOCK_STREAM);
 			type = 1;
 			break;
 
 		case 'u':
-			sd = sock_creat(SOCK_DGRAM);
 			type = 0;
 			break;
 
@@ -124,23 +153,12 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (sd == -1)
-		err(1, "Failed creating socket");
-
-	sin.sin_family = AF_INET;
-	sin.sin_addr.s_addr = htonl(INADDR_ANY);
-	sin.sin_port = htons(port);
-  
-	warnx("Starting up, binding to *:%d", port);
-	if ((bind(sd, (struct sockaddr*)&sin, sizeof(sin))) == -1)
-		err(1, "Failed binding socket to port *:%d", PORT);
-  
 	if (type)
-		tcp(sd);
+		tcp(family, port);
 	else
-		udp(sd);
+		udp(family, port);
   
-	return close(sd);
+	return 0;
 }
 
 /**
