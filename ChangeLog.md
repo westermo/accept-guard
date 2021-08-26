@@ -28,5 +28,5 @@ First public release.  Basic `accept()` wrapper which reads allowed
 interface:port tuples from an `ACL=iface:port;iface2:port` environment
 variable.
 
-[v1.1]: https://github.com/troglobit/smcroute/compare/v1.0...v1.1
-[v1.0]: https://github.com/troglobit/smcroute/compare/v0.0...v1.0
+[v1.1]: https://github.com/westermo/accept-guard/compare/v1.0...v1.1
+[v1.0]: https://github.com/westermo/accept-guard/compare/v0.0...v1.0
