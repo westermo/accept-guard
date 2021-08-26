@@ -4,14 +4,16 @@ ChangeLog
 All notable changes to the project are documented in this file.
 
 
-[v1.1][] - UNRELEASED
+[v1.1][] - 2021-08-26
 ---------------------
 
 ### Changes
+- Add support for UDP services by wrapping `recvfrom()`
+- Add support for IPv6
 - Scope ACL environment variable with `ACCEPT_GUARD_` prefix to avoid
   clashing with other uses of ACL on the system.  Incompatible change!
 - Simplify build system slightly
-- Add basic IPv4 TCP test to verify accept guard, based on `unshare`
+- Add basic test suite to verify accept guard, based on `unshare`
 - Replace unsafe `strncpy()` with safer version that NUL terminates.
   In a world of systemd named interfaces we are always at `IFNAMSIZ`
 

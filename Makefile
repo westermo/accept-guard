@@ -1,4 +1,4 @@
-VERSION   = 1.1-beta1
+VERSION   = 1.1
 NAME      = accept-guard
 PKG       = $(NAME)-$(VERSION)
 ARCHIVE   = $(PKG).tar.gz
