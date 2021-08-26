@@ -262,10 +262,7 @@ ssize_t recvfrom(int sd, void *buf, size_t len, int flags, struct sockaddr *addr
 	rc = org_recvfrom(sd, buf, len, flags, addr, addrlen);
 	if (rc > 0) {
 		if (!iface_allowed(sd, ifindex)) {
-			shutdown(rc, SHUT_RDWR);
-			close(rc);
-			/* Set as not valid socket, since it's not valid for access. */
-			errno = EBADF;
+			errno = ERESTART;
 			return -1;
 		}
 	}
