@@ -120,39 +120,59 @@ static void parse_acl(void)
 static int identify_inbound(int sd, int ifindex, char *ifname, size_t len, int *port)
 {
 	struct ifaddrs *ifaddr, *ifa;
-	struct sockaddr_in sin;
-	socklen_t slen = sizeof(sin);
+#ifdef AF_INET6
+	struct sockaddr_storage ss;
+#else
+	struct sockaddr_in ss;
+#endif
+	socklen_t slen = sizeof(ss);
 
 	if (ifindex) {
 		if_indextoname(ifindex, ifname);
 		return 0;
 	}
 
-	if (-1 == getsockname(sd, (struct sockaddr *)&sin, &slen))
+	if (-1 == getsockname(sd, (struct sockaddr *)&ss, &slen))
 		return -1;
 
 	if (-1 == getifaddrs(&ifaddr))
 		return -1;
 
 	for (ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
-		size_t ina_len = sizeof(struct in_addr);
-		struct sockaddr_in *iin;
-
 		if (!ifa->ifa_addr)
 			continue;
 
-		if (ifa->ifa_addr->sa_family != AF_INET)
+		if (ifa->ifa_addr->sa_family != ss.ss_family)
 			continue;
 
-		iin = (struct sockaddr_in *)ifa->ifa_addr;
-		if (!memcmp(&sin.sin_addr, &iin->sin_addr, ina_len)) {
-			strlencpy(ifname, ifa->ifa_name, len);
-			break;
+		if (ifa->ifa_addr->sa_family == AF_INET) {
+			struct sockaddr_in *sin = (struct sockaddr_in *)&ss;
+			size_t ina_len = sizeof(struct in_addr);
+			struct sockaddr_in *iin;
+
+			iin = (struct sockaddr_in *)ifa->ifa_addr;
+			if (!memcmp(&sin->sin_addr, &iin->sin_addr, ina_len)) {
+				strlencpy(ifname, ifa->ifa_name, len);
+				*port = ntohs(sin->sin_port);
+				break;
+			}
 		}
+#ifdef AF_INET6
+		else if (ifa->ifa_addr->sa_family == AF_INET6) {
+			struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&ss;
+			size_t ina_len = sizeof(struct in6_addr);
+			struct sockaddr_in6 *iin;
+
+			iin = (struct sockaddr_in6 *)ifa->ifa_addr;
+			if (!memcmp(&sin6->sin6_addr, &iin->sin6_addr, ina_len)) {
+				strlencpy(ifname, ifa->ifa_name, len);
+				*port = ntohs(sin6->sin6_port);
+				break;
+			}
+		}
+#endif
 	}
 	freeifaddrs(ifaddr);
-
-	*port = ntohs(sin.sin_port);
 
 	return 0;
 }
