@@ -1,5 +1,5 @@
 EXEC   := client server
-TESTS  := accept.sh accept6.sh recvfrom.sh
+TESTS  := accept.sh accept6.sh recvfrom.sh recvmsg.sh
 
 all: $(EXEC)
 

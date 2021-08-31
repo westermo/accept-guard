@@ -13,6 +13,8 @@
 #define MAX 80
 #define PORT "8080"
 
+static int use_recvmsg = 0;
+
 
 int sock_creat(int family, int type, char *port)
 {
@@ -96,6 +98,28 @@ void tcp(int family, char *port)
 	}
 }
 
+/*
+ * Depending on the mode of operation we either call recvfrom() or
+ * recvmsg() to test different API wrappers in accept-guard.so
+ */
+ssize_t udp_recv(int sd, char *buf, size_t len, struct sockaddr *sa, socklen_t *salen)
+{
+	struct iovec iov[1] = { { buf, len} };
+	struct msghdr msg;
+
+	if (!use_recvmsg)
+		return recvfrom(sd, buf, len, 0, sa, salen);
+
+	msg.msg_name       = sa;
+	msg.msg_namelen    = *salen;
+	msg.msg_iov        = iov;
+	msg.msg_iovlen     = 1;
+	msg.msg_control    = NULL;
+	msg.msg_controllen = 0;
+
+	return recvmsg(sd, &msg, 0);
+}
+
 void udp(int family, char *port)
 {
 	struct sockaddr sa;
@@ -108,7 +132,7 @@ void udp(int family, char *port)
 
 	while (1) {
 		salen = sizeof(sa);
-		len = recvfrom(sd, buf, sizeof(buf), 0, &sa, &salen);
+		len = udp_recv(sd, buf, sizeof(buf), &sa, &salen);
 		if (len == -1) {
 			warn("Failed reading client request");
 			continue;
@@ -130,10 +154,14 @@ int main(int argc, char *argv[])
 	char *port = PORT;
 	int type, c;
 
-	while ((c = getopt(argc, argv, "6p:tu")) != EOF) {
+	while ((c = getopt(argc, argv, "6mp:tu")) != EOF) {
 		switch (c) {
 		case '6':
 			family = AF_INET6;
+			break;
+
+		case 'm':
+			use_recvmsg = 1;
 			break;
 
 		case 'p':
