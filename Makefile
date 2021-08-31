@@ -37,6 +37,7 @@ uninstall:
 	-$(RM) -r $(DESTDIR)$(docdir)
 
 clean:
+	$(MAKE) -C test $@
 	-$(RM) $(LIBNAME) *.o
 
 dist:
