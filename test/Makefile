@@ -1,11 +1,10 @@
 EXEC   := client server
+TESTS  := accept.sh accept6.sh recvfrom.sh
 
 all: $(EXEC)
 
 check: all
-	unshare -mrun ./accept.sh
-	unshare -mrun ./recvfrom.sh
-	unshare -mrun ./accept6.sh
+	@./runner.sh $(TESTS)
 
 clean:
 	$(RM) $(EXEC) *.o
