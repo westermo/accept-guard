@@ -1,46 +1,20 @@
 #!/bin/sh
+# Verifies basic UDP recvfrom() and recvmsg() API wrappers
+#set -x
 
-cleanup()
-{
-    [ -n "$PID" ] && kill -9 "$PID"
-}
+# shellcheck source=/dev/null
+. "$(dirname "$0")/lib.sh"
 
-trap cleanup INT TERM QUIT EXIT
+topology
+server -u
 
-ip link add a1 type dummy
-ip link add a2 type dummy
+print "Verifying loopback connectivity ..."
+./client -u -p 8080 127.0.0.1 || FAIL
 
-ip link set lo up
-ip link set a1 up
-ip link set a2 up
+print "Verifying no connection via a1 ..."
+./client -u -p 8080 10.0.0.1 && FAIL
 
-ip addr add 10.0.0.1/24 dev a1
-ip addr add 20.0.0.1/24 dev a2
+print "Verifying connection via a2 ..."
+./client -u -p 8080 20.0.0.1 || FAIL
 
-ip -br l
-ip -br a
-
-export LD_PRELOAD=../accept-guard.so
-export ACCEPT_GUARD_ACL="lo:8080;a2:8080"
-./server -u -p 8080 &
-PID=$!
-unset LD_PRELOAD
-sleep 1
-
-if ! ./client -u -p 8080 127.0.0.1; then
-    echo "Cannot connect via loopback"
-    exit 1
-fi
-
-if ./client -u -p 8080 10.0.0.1; then
-    echo "Should not be able to connect via a1"
-    exit 1
-fi
-
-if ! ./client -u -p 8080 20.0.0.1; then
-    echo "Cannot connect via a1"
-    exit 1
-fi
-
-echo "Test successful."
-exit 0
+OK
