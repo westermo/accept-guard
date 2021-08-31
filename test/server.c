@@ -152,7 +152,8 @@ int main(int argc, char *argv[])
 {
 	int family = AF_INET;
 	char *port = PORT;
-	int type, c;
+	int type = 0;
+	int c;
 
 	while ((c = getopt(argc, argv, "6mp:tu")) != EOF) {
 		switch (c) {
