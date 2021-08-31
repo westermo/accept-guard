@@ -46,6 +46,13 @@
 *.idb
 *.pdb
 
+# Tags
+GPATH
+GRTAGS
+GTAGS
+ID
+TAGS
+
 # Kernel Module Compile Results
 *.mod*
 *.cmd
