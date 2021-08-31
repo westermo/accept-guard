@@ -1,7 +1,11 @@
 #!/bin/sh
 
 # Test name, used everywhere as /tmp/$NM/foo
-NM=$(basename "$0" .sh)
+if [ "$0" = "-bash" ]; then
+    NM="bash"
+else
+    NM=$(basename "$0" .sh)
+fi
 
 print()
 {
