@@ -3,9 +3,9 @@ EXEC   := client server
 all: $(EXEC)
 
 check: all
-	unshare -mrun ./tcp.sh
-	unshare -mrun ./udp.sh
-	unshare -mrun ./ipv6.sh
+	unshare -mrun ./accept.sh
+	unshare -mrun ./recvfrom.sh
+	unshare -mrun ./accept6.sh
 
 clean:
 	$(RM) $(EXEC) *.o
