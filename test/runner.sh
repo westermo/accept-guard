@@ -5,13 +5,13 @@ for test in "$@"; do
     unshare -mrun "./$test" >"$nm".log 2>&1
     case "$?" in
 	"0")
-	    echo "PASS: $test"
+	    printf "\033[0;32mPASS\033[0m: $test\n"
 	    ;;
 	"77")
-	    echo "SKIP: $test"
+	    echo "\033[0;33mSKIP\033[0m: $test\n"
 	    ;;
 	"99")
-	    echo "FAIL: $test"
+	    echo "\033[0;31mFAIL\033[0m: $test\n"
 	    cat "$nm".log
 	    ;;
     esac
