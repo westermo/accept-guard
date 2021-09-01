@@ -43,8 +43,6 @@ struct acl {
 	int  ports[MAX_PORTS];
 };
 
-/* The access control list containing interfaces and
- * ports that are allowed access. */
 static struct acl acl[MAX_IFACES];
 
 static size_t strlencpy(char *dst, const char *src, size_t len)
@@ -240,9 +238,9 @@ int accept(int socket, struct sockaddr *addr, socklen_t *length_ptr)
 static int peek_ifindex(int sd)
 {
 	static char cmbuf[0x100];
-	struct msghdr msgh;
-	struct cmsghdr *cmsg;
 	struct sockaddr_in sin;
+	struct cmsghdr *cmsg;
+	struct msghdr msgh;
 	int on = 1;
 
 	setsockopt(sd, SOL_IP, IP_PKTINFO, &on, sizeof(on));
