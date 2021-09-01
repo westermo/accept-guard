@@ -1,7 +1,7 @@
 # accept-guard
 
-Service access control by wrapping the Linux `accept()`, `recvfrom()`,
-and `recvmsg()` system calls, for TCP and UDP respectively.
+Service access control (ACL) by wrapping the Linux `accept()`, `recv()`,
+`recvfrom()`, and `recvmsg()` system calls, for TCP and UDP.
 
 The accept guard wrapper allows access to services based on a list of
 interfaces and ports.  It is loaded using the `LD_PRELOAD` environment

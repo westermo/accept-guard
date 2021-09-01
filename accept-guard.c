@@ -46,6 +46,7 @@ struct acl {
 static struct acl acl[MAX_IFACES];
 
 static int     (*org_accept)   (int, struct sockaddr *, socklen_t *);
+static ssize_t (*org_recv)     (int, void *, size_t, int);
 static ssize_t (*org_recvfrom) (int, void *, size_t, int, struct sockaddr *, socklen_t *);
 static ssize_t (*org_recvmsg)  (int, struct msghdr *, int);
 
@@ -285,6 +286,19 @@ static ssize_t do_recv(int sd, int rc, int flags, int ifindex)
 	}
 done:
 	return rc;
+}
+
+ssize_t recv(int sd, void *buf, size_t len, int flags)
+{
+	int ifindex;
+
+	org_recv = dlsym(RTLD_NEXT, "recv");
+	org_recvfrom = dlsym(RTLD_NEXT, "recvfrom");
+	org_recvmsg = dlsym(RTLD_NEXT, "recvmsg");
+
+	ifindex = peek_ifindex(sd);
+
+	return do_recv(sd, org_recv(sd, buf, len, flags), flags, ifindex);
 }
 
 ssize_t recvfrom(int sd, void *buf, size_t len, int flags, struct sockaddr *addr, socklen_t *addrlen)

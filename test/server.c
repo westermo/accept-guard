@@ -80,7 +80,7 @@ void tcp(int family, char *port)
 			continue;
 		}
   
-		n = read(client, buf, sizeof(buf));
+		n = recv(client, buf, sizeof(buf), 0);
 		if (n == -1) {
 			warn("Failed reading from client socket");
 			continue;

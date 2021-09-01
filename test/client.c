@@ -65,7 +65,7 @@ void tcp(int family, char *addr, char *port)
 	if (len == -1)
 		err(1, "Failed communicating with server at %s:%s", addr, port);
 
-	len = read(sd, buf, sizeof(buf));
+	len = recv(sd, buf, sizeof(buf), 0);
 	if (len <= 0) {
 		usleep(10000);
 		err(1, "Failed reading response from server at %s:%s", addr, port);
