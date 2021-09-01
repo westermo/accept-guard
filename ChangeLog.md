@@ -4,6 +4,19 @@ ChangeLog
 All notable changes to the project are documented in this file.
 
 
+[v1.2][] - 2021-09-01
+---------------------
+
+### Changes
+- Add support for wrapping `recvmsg()` and `recv()` syscalls, in
+  addition to the existing `recvfrom()` wrapper
+- Slightly improved test framework, with .log files and overview
+- Only check ACL if `accept()` doesn't return error
+
+### Fixes
+- Fix markdown links in changelog diffs
+- Fix uninitialized variable in test server
+
 [v1.1][] - 2021-08-26
 ---------------------
 
@@ -28,5 +41,6 @@ First public release.  Basic `accept()` wrapper which reads allowed
 interface:port tuples from an `ACL=iface:port;iface2:port` environment
 variable.
 
+[v1.2]: https://github.com/westermo/accept-guard/compare/v1.1...v1.2
 [v1.1]: https://github.com/westermo/accept-guard/compare/v1.0...v1.1
 [v1.0]: https://github.com/westermo/accept-guard/compare/v0.0...v1.0
