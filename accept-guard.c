@@ -45,6 +45,8 @@ struct acl {
 
 static struct acl acl[MAX_IFACES];
 
+static int (*org_accept)(int socket, struct sockaddr *addr, socklen_t *length_ptr);
+static ssize_t (*org_recvfrom)(int, void *, size_t, int, struct sockaddr *, socklen_t *);
 static size_t strlencpy(char *dst, const char *src, size_t len)
 {
 	const char *p = src;
@@ -212,18 +214,18 @@ static int iface_allowed(int sd, int ifindex)
 
 int accept(int socket, struct sockaddr *addr, socklen_t *length_ptr)
 {
-	int (*org_accept)(int socket, struct sockaddr *addr, socklen_t *length_ptr);
-	int result;
-
-	/* Parse configuration from environment variable. */
-	parse_acl();
+	int rc;
 
 	org_accept = dlsym(RTLD_NEXT, "accept");
-	result = org_accept(socket, addr, length_ptr);
-	if (result > 0) {
-		if (!iface_allowed(result, 0)) {
-			shutdown(result, SHUT_RDWR);
-			close(result);
+
+	rc = org_accept(socket, addr, length_ptr);
+	if (rc != -1) {
+		/* Parse configuration from environment variable. */
+		parse_acl();
+
+		if (!iface_allowed(rc, 0)) {
+			shutdown(rc, SHUT_RDWR);
+			close(rc);
 
 			/* Set as not valid socket, since it's not valid for access. */
 			errno = EBADF;
@@ -231,7 +233,7 @@ int accept(int socket, struct sockaddr *addr, socklen_t *length_ptr)
 		}
 	}
 
-	return result;
+	return rc;
 }
 
 /* Peek into socket to figure out where an inbound packet comes from */
@@ -268,15 +270,14 @@ static int peek_ifindex(int sd)
 
 ssize_t recvfrom(int sd, void *buf, size_t len, int flags, struct sockaddr *addr, socklen_t *addrlen)
 {
-	ssize_t (*org_recvfrom)(int, void *, size_t, int, struct sockaddr *, socklen_t *);
 	int ifindex, rc;
 
+	org_recvfrom = dlsym(RTLD_NEXT, "recvfrom");
 	/* Parse configuration from environment variable. */
 	parse_acl();
 
 	ifindex = peek_ifindex(sd);
 
-	org_recvfrom = dlsym(RTLD_NEXT, "recvfrom");
 	rc = org_recvfrom(sd, buf, len, flags, addr, addrlen);
 	if (rc > 0) {
 		if (!iface_allowed(sd, ifindex)) {
