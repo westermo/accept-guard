@@ -45,8 +45,11 @@ struct acl {
 
 static struct acl acl[MAX_IFACES];
 
-static int (*org_accept)(int socket, struct sockaddr *addr, socklen_t *length_ptr);
-static ssize_t (*org_recvfrom)(int, void *, size_t, int, struct sockaddr *, socklen_t *);
+static int     (*org_accept)   (int, struct sockaddr *, socklen_t *);
+static ssize_t (*org_recvfrom) (int, void *, size_t, int, struct sockaddr *, socklen_t *);
+static ssize_t (*org_recvmsg)  (int, struct msghdr *, int);
+
+
 static size_t strlencpy(char *dst, const char *src, size_t len)
 {
 	const char *p = src;
@@ -212,13 +215,13 @@ static int iface_allowed(int sd, int ifindex)
 	return 0;
 }
 
-int accept(int socket, struct sockaddr *addr, socklen_t *length_ptr)
+int accept(int socket, struct sockaddr *addr, socklen_t *addrlen)
 {
 	int rc;
 
 	org_accept = dlsym(RTLD_NEXT, "accept");
 
-	rc = org_accept(socket, addr, length_ptr);
+	rc = org_accept(socket, addr, addrlen);
 	if (rc != -1) {
 		/* Parse configuration from environment variable. */
 		parse_acl();
@@ -253,7 +256,7 @@ static int peek_ifindex(int sd)
 	msgh.msg_control = cmbuf;
 	msgh.msg_controllen = sizeof(cmbuf);
 
-	if (recvmsg(sd, &msgh, MSG_PEEK) < 0)
+	if (org_recvmsg(sd, &msgh, MSG_PEEK) == -1)
 		return 0;
 
 	for (cmsg = CMSG_FIRSTHDR(&msgh); cmsg; cmsg = CMSG_NXTHDR(&msgh, cmsg)) {
@@ -273,6 +276,8 @@ ssize_t recvfrom(int sd, void *buf, size_t len, int flags, struct sockaddr *addr
 	int ifindex, rc;
 
 	org_recvfrom = dlsym(RTLD_NEXT, "recvfrom");
+	org_recvmsg = dlsym(RTLD_NEXT, "recvmsg");
+
 	/* Parse configuration from environment variable. */
 	parse_acl();
 
@@ -286,6 +291,33 @@ ssize_t recvfrom(int sd, void *buf, size_t len, int flags, struct sockaddr *addr
 		}
 	}
 
+	return rc;
+}
+
+ssize_t recvmsg(int sd, struct msghdr *msg, int flags)
+{
+	int ifindex, rc;
+
+	org_recvmsg = dlsym(RTLD_NEXT, "recvmsg");
+
+	/* Try to peek ifindex from socket, on fail allow */
+	ifindex = peek_ifindex(sd);
+
+	rc = org_recvmsg(sd, msg, flags);
+	if (flags & MSG_PEEK)
+		goto done;
+
+	if (rc == -1)
+		return -1;
+
+	/* Parse configuration from environment variable. */
+	parse_acl();
+
+	if (ifindex > 0 && !iface_allowed(sd, ifindex)) {
+		errno = EAGAIN;
+		return -1;
+	}
+done:
 	return rc;
 }
 
