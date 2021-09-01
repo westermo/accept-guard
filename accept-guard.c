@@ -271,54 +271,44 @@ static int peek_ifindex(int sd)
 	return 0;
 }
 
-ssize_t recvfrom(int sd, void *buf, size_t len, int flags, struct sockaddr *addr, socklen_t *addrlen)
+static ssize_t do_recv(int sd, int rc, int flags, int ifindex)
 {
-	int ifindex, rc;
-
-	org_recvfrom = dlsym(RTLD_NEXT, "recvfrom");
-	org_recvmsg = dlsym(RTLD_NEXT, "recvmsg");
+	if (rc == -1 || (flags & MSG_PEEK))
+		goto done;
 
 	/* Parse configuration from environment variable. */
 	parse_acl();
 
+	if (!iface_allowed(sd, ifindex)) {
+		errno = ERESTART;
+		return -1;
+	}
+done:
+	return rc;
+}
+
+ssize_t recvfrom(int sd, void *buf, size_t len, int flags, struct sockaddr *addr, socklen_t *addrlen)
+{
+	int ifindex;
+
+	org_recvfrom = dlsym(RTLD_NEXT, "recvfrom");
+	org_recvmsg = dlsym(RTLD_NEXT, "recvmsg");
+
 	ifindex = peek_ifindex(sd);
 
-	rc = org_recvfrom(sd, buf, len, flags, addr, addrlen);
-	if (rc > 0) {
-		if (!iface_allowed(sd, ifindex)) {
-			errno = ERESTART;
-			return -1;
-		}
-	}
-
-	return rc;
+	return do_recv(sd, org_recvfrom(sd, buf, len, flags, addr, addrlen), flags, ifindex);
 }
 
 ssize_t recvmsg(int sd, struct msghdr *msg, int flags)
 {
-	int ifindex, rc;
+	int ifindex;
 
 	org_recvmsg = dlsym(RTLD_NEXT, "recvmsg");
 
 	/* Try to peek ifindex from socket, on fail allow */
 	ifindex = peek_ifindex(sd);
 
-	rc = org_recvmsg(sd, msg, flags);
-	if (flags & MSG_PEEK)
-		goto done;
-
-	if (rc == -1)
-		return -1;
-
-	/* Parse configuration from environment variable. */
-	parse_acl();
-
-	if (ifindex > 0 && !iface_allowed(sd, ifindex)) {
-		errno = EAGAIN;
-		return -1;
-	}
-done:
-	return rc;
+	return do_recv(sd, org_recvmsg(sd, msg, flags), flags, ifindex);
 }
 
 /**
