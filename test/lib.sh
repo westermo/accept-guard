@@ -61,6 +61,7 @@ server()
     ./server "$@" -p 8080 &
     PID=$!
     unset LD_PRELOAD
+    unset ACCEPT_GUARD_ACL
     sleep 1
 }
 
