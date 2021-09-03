@@ -52,6 +52,7 @@ GRTAGS
 GTAGS
 ID
 TAGS
+tags
 
 # Kernel Module Compile Results
 *.mod*
