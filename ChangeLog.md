@@ -4,6 +4,13 @@ ChangeLog
 All notable changes to the project are documented in this file.
 
 
+[v1.3][] - 2021-09-03
+---------------------
+
+### Fixes
+- Fixes for wrapping Net-SNMP and other services that use `AF_UNIX` IPC
+
+
 [v1.2][] - 2021-09-01
 ---------------------
 
@@ -41,6 +48,7 @@ First public release.  Basic `accept()` wrapper which reads allowed
 interface:port tuples from an `ACL=iface:port;iface2:port` environment
 variable.
 
+[v1.3]: https://github.com/westermo/accept-guard/compare/v1.2...v1.3
 [v1.2]: https://github.com/westermo/accept-guard/compare/v1.1...v1.2
 [v1.1]: https://github.com/westermo/accept-guard/compare/v1.0...v1.1
 [v1.0]: https://github.com/westermo/accept-guard/compare/v0.0...v1.0
