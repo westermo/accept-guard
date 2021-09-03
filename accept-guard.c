@@ -224,7 +224,6 @@ int accept(int socket, struct sockaddr *addr, socklen_t *addrlen)
 
 	rc = org_accept(socket, addr, addrlen);
 	if (rc != -1) {
-		/* Parse configuration from environment variable. */
 		parse_acl();
 
 		if (!iface_allowed(rc, 0)) {
@@ -277,7 +276,6 @@ static ssize_t do_recv(int sd, int rc, int flags, int ifindex)
 	if (rc == -1 || (flags & MSG_PEEK))
 		goto done;
 
-	/* Parse configuration from environment variable. */
 	parse_acl();
 
 	if (!iface_allowed(sd, ifindex)) {
