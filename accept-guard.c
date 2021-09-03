@@ -185,6 +185,9 @@ static int port_allowed(struct acl *entry, int port)
 {
 	int i;
 
+	if (port == 0)
+		return 1;	/* no port, local IPC traffic */
+
 	for (i = 0; i < MAX_PORTS; i++) {
 		if (entry->ports[i] == port)
 			return 1;
@@ -273,7 +276,7 @@ static int peek_ifindex(int sd)
 
 static ssize_t do_recv(int sd, int rc, int flags, int ifindex)
 {
-	if (rc == -1 || (flags & MSG_PEEK))
+	if (rc == -1 || (flags & MSG_PEEK) || ifindex == 0)
 		goto done;
 
 	parse_acl();
