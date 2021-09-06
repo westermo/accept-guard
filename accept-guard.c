@@ -202,9 +202,12 @@ static int iface_allowed(int sd, int ifindex)
 	int port = 0;
 	int i;
 
-	/* If incoming interface cannot be identified, deny access. */
+	/*
+	 * If incoming interface cannot be identified, allow access.
+	 * Possibly an AF_UNIX socket or other local access.
+	 */
 	if (identify_inbound(sd, ifindex, ifname, sizeof(ifname), &port))
-		return 0;
+		return 1;
 
 	for (i = 0; i < MAX_IFACES; i++) {
 		/* If reached last item => deny access */
