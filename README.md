@@ -3,12 +3,19 @@
 Service access control (ACL) by wrapping the Linux `accept()`, `recv()`,
 `recvfrom()`, and `recvmsg()` system calls, for TCP and UDP.
 
+**Example:** drop connections from WAN interface for your web server and
+	SNMP agent, without involving weird `iptables` or `nft` commands.
+
 The accept guard wrapper allows access to services based on a list of
 interfaces and ports.  It is loaded using the `LD_PRELOAD` environment
 variable, controlled by the environment variable `ACCEPT_GUARD_ACL`
 
-**Example:** drop connections from WAN interface for your web server and
-	SNMP agent, without involving weird `iptables` or `nft` commands.
+> **Note:** the accept guard is not a replacement for a real firewall.
+>   It is a poor man's "good enough" interface filtering mechanism.
+>   This is reflected in much of the defaults and fallbacks in the code,
+>   e.g., if inbound interface cannot be determined (TCP/UDP), the
+>   connection is allowed.  This to not prevent `AF_UNIX` and other
+>   types of conmmunication that uses the `recv()` family of syscalls.
 
 
 ## Syntax
