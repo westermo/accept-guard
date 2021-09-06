@@ -222,6 +222,24 @@ static int iface_allowed(int sd, int ifindex)
 	return 0;
 }
 
+static int is_inet_domain(int sd)
+{
+	socklen_t len;
+	int val;
+
+	len = sizeof(val);
+	if (getsockopt(sd, SOL_SOCKET, SO_DOMAIN, &val, &len) == -1)
+		return 0;      /* Fall back to allow syscall on error */
+
+	if (val == AF_INET)
+		return 1;
+#ifdef AF_INET6
+	if (val == AF_INET6)
+		return 1;
+#endif
+	return 0;		/* Possibly AF_UNIX socket, allow */
+}
+
 int accept(int socket, struct sockaddr *addr, socklen_t *addrlen)
 {
 	int rc;
@@ -229,7 +247,8 @@ int accept(int socket, struct sockaddr *addr, socklen_t *addrlen)
 	org_accept = dlsym(RTLD_NEXT, "accept");
 
 	rc = org_accept(socket, addr, addrlen);
-	if (rc != -1) {
+	if (rc != -1 && is_inet_domain(socket)) {
+
 		parse_acl();
 
 		if (!iface_allowed(rc, 0)) {
@@ -279,7 +298,7 @@ static int peek_ifindex(int sd)
 
 static ssize_t do_recv(int sd, int rc, int flags, int ifindex)
 {
-	if (rc == -1 || (flags & MSG_PEEK) || ifindex == 0)
+	if (rc == -1 || (flags & MSG_PEEK) || ifindex == 0 || !is_inet_domain(sd))
 		goto done;
 
 	parse_acl();
