@@ -4,6 +4,16 @@ ChangeLog
 All notable changes to the project are documented in this file.
 
 
+[v1.4][] - 2021-09-06
+---------------------
+
+### Changes
+- Allow access if `getsockaname()` or `getifaddrs()` fails
+- Use `SO_DOMAIN` socket option to query for `AF_INET` and `AF_INET6`
+  domain sockets.  These are the only ones we are concerned with, let
+  everything else pass through
+
+
 [v1.3][] - 2021-09-03
 ---------------------
 
@@ -48,6 +58,7 @@ First public release.  Basic `accept()` wrapper which reads allowed
 interface:port tuples from an `ACL=iface:port;iface2:port` environment
 variable.
 
+[v1.4]: https://github.com/westermo/accept-guard/compare/v1.3...v1.4
 [v1.3]: https://github.com/westermo/accept-guard/compare/v1.2...v1.3
 [v1.2]: https://github.com/westermo/accept-guard/compare/v1.1...v1.2
 [v1.1]: https://github.com/westermo/accept-guard/compare/v1.0...v1.1
