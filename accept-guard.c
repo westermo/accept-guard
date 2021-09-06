@@ -146,6 +146,27 @@ static int identify_inbound(int sd, int ifindex, char *ifname, size_t len, int *
 		if (!ifa->ifa_addr)
 			continue;
 
+#ifdef AF_INET6
+		/* Detect and handle IPv4-mapped-on-IPv6 */
+		if (ifa->ifa_addr->sa_family == AF_INET && ss.ss_family == AF_INET6) {
+			struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&ss;
+			size_t ina_len = sizeof(struct in_addr);
+			size_t ina_offset = sizeof(struct in6_addr) - sizeof(struct in_addr);
+			struct sockaddr_in *iin;
+
+			if (!IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr))
+				continue;
+
+			iin = (struct sockaddr_in *)ifa->ifa_addr;
+			if (!memcmp((unsigned char *)&sin6->sin6_addr + ina_offset,
+					&iin->sin_addr, ina_len)) {
+				strlencpy(ifname, ifa->ifa_name, len);
+				*port = ntohs(sin6->sin6_port);
+				break;
+			}
+		}
+#endif
+
 		if (ifa->ifa_addr->sa_family != ss.ss_family)
 			continue;
 
