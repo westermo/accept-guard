@@ -125,9 +125,9 @@ static int identify_inbound(int sd, int ifindex, char *ifname, size_t len, int *
 {
 	struct ifaddrs *ifaddr, *ifa;
 #ifdef AF_INET6
-	struct sockaddr_storage ss;
+	struct sockaddr_storage ss = { 0 };
 #else
-	struct sockaddr_in ss;
+	struct sockaddr_in ss = { 0 };
 #endif
 	socklen_t slen = sizeof(ss);
 
