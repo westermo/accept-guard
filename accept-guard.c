@@ -261,6 +261,21 @@ static int is_inet_domain(int sd)
 	return 0;		/* Possibly AF_UNIX socket, allow */
 }
 
+static int is_sock_stream(int sd)
+{
+	socklen_t len;
+	int val;
+
+	len = sizeof(val);
+	if (getsockopt(sd, SOL_SOCKET, SO_TYPE, &val, &len) == -1)
+		return 1;	/* Fall back to allow syscall on error */
+
+	if (val == SOCK_STREAM)
+		return 1;
+
+	return 0;
+}
+
 int accept(int socket, struct sockaddr *addr, socklen_t *addrlen)
 {
 	int rc;
@@ -319,7 +334,7 @@ static int peek_ifindex(int sd)
 
 static ssize_t do_recv(int sd, int rc, int flags, int ifindex)
 {
-	if (rc == -1 || (flags & MSG_PEEK) || ifindex == 0 || !is_inet_domain(sd))
+	if (rc == -1 || (flags & MSG_PEEK) || ifindex == 0 || !is_inet_domain(sd) || is_sock_stream(sd))
 		goto done;
 
 	parse_acl();
