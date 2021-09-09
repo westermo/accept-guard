@@ -325,11 +325,11 @@ static int peek_ifindex(int sd)
 
 
 	if (org_recvmsg(sd, &msgh, MSG_PEEK) == -1) {
-		setsockopt(sd, SOL_IP, IP_PKTINFO, &orig_on, sizeof(orig_on));
+		(void)setsockopt(sd, SOL_IP, IP_PKTINFO, &orig_on, sizeof(orig_on));
 		return 0;
 	}
 
-	setsockopt(sd, SOL_IP, IP_PKTINFO, &orig_on, sizeof(orig_on));
+	(void)setsockopt(sd, SOL_IP, IP_PKTINFO, &orig_on, sizeof(orig_on));
 	for (cmsg = CMSG_FIRSTHDR(&msgh); cmsg; cmsg = CMSG_NXTHDR(&msgh, cmsg)) {
 		struct in_pktinfo *ipi = (struct in_pktinfo *)CMSG_DATA(cmsg);
 
