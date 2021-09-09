@@ -125,9 +125,9 @@ static int identify_inbound(int sd, int ifindex, char *ifname, size_t len, int *
 {
 	struct ifaddrs *ifaddr, *ifa;
 #ifdef AF_INET6
-	struct sockaddr_storage ss;
+	struct sockaddr_storage ss = { 0 };
 #else
-	struct sockaddr_in ss;
+	struct sockaddr_in ss = { 0 };
 #endif
 	socklen_t slen = sizeof(ss);
 
@@ -261,6 +261,21 @@ static int is_inet_domain(int sd)
 	return 0;		/* Possibly AF_UNIX socket, allow */
 }
 
+static int is_sock_stream(int sd)
+{
+	socklen_t len;
+	int val;
+
+	len = sizeof(val);
+	if (getsockopt(sd, SOL_SOCKET, SO_TYPE, &val, &len) == -1)
+		return 1;	/* Fall back to allow syscall on error */
+
+	if (val == SOCK_STREAM)
+		return 1;
+
+	return 0;
+}
+
 int accept(int socket, struct sockaddr *addr, socklen_t *addrlen)
 {
 	int rc;
@@ -292,9 +307,15 @@ static int peek_ifindex(int sd)
 	struct sockaddr_in sin;
 	struct cmsghdr *cmsg;
 	struct msghdr msgh;
+	socklen_t orig_len;
+	int orig_on = 0;
 	int on = 1;
 
-	setsockopt(sd, SOL_IP, IP_PKTINFO, &on, sizeof(on));
+	orig_len = sizeof(orig_on);
+	if (getsockopt(sd, SOL_IP, IP_PKTINFO, &orig_on, &orig_len) == -1)
+		return 0;	/* Fall back to allow syscall on error */
+	if (setsockopt(sd, SOL_IP, IP_PKTINFO, &on, sizeof(on)) == -1)
+		return 0;	/* Fall back to allow syscall on error */
 
 	memset(&msgh, 0, sizeof(msgh));
 	msgh.msg_name = &sin;
@@ -302,9 +323,13 @@ static int peek_ifindex(int sd)
 	msgh.msg_control = cmbuf;
 	msgh.msg_controllen = sizeof(cmbuf);
 
-	if (org_recvmsg(sd, &msgh, MSG_PEEK) == -1)
-		return 0;
 
+	if (org_recvmsg(sd, &msgh, MSG_PEEK) == -1) {
+		(void)setsockopt(sd, SOL_IP, IP_PKTINFO, &orig_on, sizeof(orig_on));
+		return 0;
+	}
+
+	(void)setsockopt(sd, SOL_IP, IP_PKTINFO, &orig_on, sizeof(orig_on));
 	for (cmsg = CMSG_FIRSTHDR(&msgh); cmsg; cmsg = CMSG_NXTHDR(&msgh, cmsg)) {
 		struct in_pktinfo *ipi = (struct in_pktinfo *)CMSG_DATA(cmsg);
 
@@ -319,7 +344,7 @@ static int peek_ifindex(int sd)
 
 static ssize_t do_recv(int sd, int rc, int flags, int ifindex)
 {
-	if (rc == -1 || (flags & MSG_PEEK) || ifindex == 0 || !is_inet_domain(sd))
+	if (rc == -1 || (flags & MSG_PEEK) || ifindex == 0 || !is_inet_domain(sd) || is_sock_stream(sd))
 		goto done;
 
 	parse_acl();

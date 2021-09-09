@@ -4,6 +4,18 @@ ChangeLog
 All notable changes to the project are documented in this file.
 
 
+[v1.5][] - 2021-09-09
+---------------------
+
+### Changes
+- Add support for handling IPv4 addresses mapped on IPv6
+- Pass through SOCK_STREAM in `recv()`, `recvfrom()` and `recvmsg()`
+
+### Fixes
+- Restore IP_PKTINFO option on socket after interface inspection
+- Fix uninitialized variable
+
+
 [v1.4][] - 2021-09-06
 ---------------------
 
@@ -58,6 +70,7 @@ First public release.  Basic `accept()` wrapper which reads allowed
 interface:port tuples from an `ACL=iface:port;iface2:port` environment
 variable.
 
+[v1.5]: https://github.com/westermo/accept-guard/compare/v1.4...v1.5
 [v1.4]: https://github.com/westermo/accept-guard/compare/v1.3...v1.4
 [v1.3]: https://github.com/westermo/accept-guard/compare/v1.2...v1.3
 [v1.2]: https://github.com/westermo/accept-guard/compare/v1.1...v1.2
