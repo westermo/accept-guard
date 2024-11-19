@@ -3,6 +3,11 @@ ChangeLog
 
 All notable changes to the project are documented in this file.
 
+[v1.6][] - 2024-11-19
+---------------------
+
+### Changes
+- Extend number of ports possible to use per interface.
 
 [v1.5][] - 2021-09-09
 ---------------------
