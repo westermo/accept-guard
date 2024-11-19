@@ -36,7 +36,7 @@
 #define ACL_ENV     "ACCEPT_GUARD_ACL"
 #define IFACE_ANY   "any"
 #define MAX_IFACES  (64 * 4)
-#define MAX_PORTS   2
+#define MAX_PORTS   8
 
 struct acl {
 	char iface[IF_NAMESIZE];
